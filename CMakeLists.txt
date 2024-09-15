@@ -45,6 +45,7 @@ set(qt_components Core Gui Widgets)
 if(${VTK_QT_VERSION} VERSION_GREATER_EQUAL 6)
     list(APPEND qt_components OpenGLWidgets)
 endif()
+
 list(SORT qt_components)
 find_package(Qt${VTK_QT_VERSION} QUIET
     REQUIRED COMPONENTS ${qt_components}
@@ -75,19 +76,23 @@ set(CMAKE_NINJA_FORCE_RESPONSE_FILE "ON" CACHE BOOL "Force Ninja to use response
 # CMAKE_AUTOMOC in ON so the MOC headers will be automatically wrapped.
 
 #------------------------- FFTW & libsndfile ---------------------------------------------
-if(DEFINED ENV{SNDFILE_PATH})
-    include_directories("$ENV{SNDFILE_PATH}\\include")
-    set(SNDFILE_LIBRARIES "$ENV{SNDFILE_PATH}\\lib\\sndfile.lib")
-else()
-    message(SEND_ERROR "SNDFILE_PATH environment variable is not set.")
-endif()
+#if(DEFINED ENV{SNDFILE_PATH})
+#    include_directories("$ENV{SNDFILE_PATH}\\include")
+#    set(SNDFILE_LIBRARIES "$ENV{SNDFILE_PATH}\\lib\\sndfile.lib")
+#else()
+#    message(SEND_ERROR "SNDFILE_PATH environment variable is not set.")
+#endif()
+#
+#if(DEFINED ENV{FFTW_PATH})
+#    include_directories("$ENV{FFTW_PATH}")
+#    set(FFTW_LIBRARIES "$ENV{FFTW_PATH}\\libfftw3-3.lib")
+#else()
+#    message(SEND_ERROR "FFTW_PATH environment variable is not set.")
+#endif()
 
-if(DEFINED ENV{FFTW_PATH})
-    include_directories("$ENV{FFTW_PATH}")
-    set(FFTW_LIBRARIES "$ENV{FFTW_PATH}\\libfftw3-3.lib")
-else()
-    message(SEND_ERROR "FFTW_PATH environment variable is not set.")
-endif()
+find_package(SndFile REQUIRED)
+find_package(FFTW3 CONFIG REQUIRED)
+
 #-----------------------------------------------------------------------------------------
 
 add_executable(CLion_test MACOSX_BUNDLE
@@ -103,7 +108,11 @@ if (Qt${VTK_QT_VERSION}Widgets_VERSION VERSION_LESS "5.11.0")
 else()
     target_link_libraries(CLion_test ${qt_modules})
 endif()
+
 target_link_libraries(CLion_test ${VTK_LIBRARIES})
+target_link_libraries(CLion_test FFTW3::fftw3)
+target_link_libraries(CLion_test ${SndFile_LIBRARIES})
+
 # vtk_module_autoinit is needed
 vtk_module_autoinit(
         TARGETS CLion_test
@@ -111,12 +120,12 @@ vtk_module_autoinit(
 )
 
 # FFTW & libsndfile
-target_link_libraries(CLion_test ${FFTW_LIBRARIES} ${SNDFILE_LIBRARIES})
+#target_link_libraries(CLion_test ${FFTW_LIBRARIES} ${SNDFILE_LIBRARIES})
 
-set(DLL_FILES "$ENV{FFTW_PATH}\\libfftw3-3.dll" "$ENV{SNDFILE_PATH}\\bin\\sndfile.dll")
-foreach(dll ${DLL_FILES})
-    add_custom_command(TARGET CLion_test POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${dll}"
-            "${PROJECT_SOURCE_DIR}/cmake-build-debug-visual-studio")
-endforeach()
+#set(DLL_FILES "$ENV{FFTW_PATH}\\libfftw3-3.dll" "$ENV{SNDFILE_PATH}\\bin\\sndfile.dll")
+#foreach(dll ${DLL_FILES})
+#    add_custom_command(TARGET CLion_test POST_BUILD
+#            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#            "${dll}"
+#            "${PROJECT_SOURCE_DIR}/cmake-build-debug-visual-studio")
+#endforeach()
