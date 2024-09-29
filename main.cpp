@@ -1,3 +1,12 @@
+#include <QApplication>
+#include <QDockWidget>
+#include <QGridLayout>
+#include <QLabel>
+#include <QMainWindow>
+#include <QPointer>
+#include <QPushButton>
+#include <QFileDialog>
+
 #include <QVTKOpenGLNativeWidget.h>
 #include <vtkActor.h>
 #include <vtkDataSetMapper.h>
@@ -8,31 +17,18 @@
 #include <vtkRenderer.h>
 #include <vtkSphereSource.h>
 
-#include <QApplication>
-#include <QDockWidget>
-#include <QGridLayout>
-#include <QLabel>
-#include <QMainWindow>
-#include <QPointer>
-#include <QPushButton>
-
 #include <cmath>
-#include <random>
-#include <QFileDialog>
+#include <omp.h>
 
-#include "LinePlot.h"
-#include "FFT.h"
+#include "LinePlot.hpp"
+#include "FFT.hpp"
 
-
-void openFileExplorer(QMainWindow* mw)
-{
-}
 
 int main(int argc, char* argv[])
 {
-    QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+	QApplication app(argc, argv);
 
-    QApplication app(argc, argv);
+	QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
     // Main window.
     QMainWindow mainWindow;
@@ -63,10 +59,9 @@ int main(int argc, char* argv[])
     vtkRenderWidget->setRenderWindow(window.Get());
 
 	auto plot = new LinePlot(window.Get());
-	plot->setColumns("x1", "x2", "ch1", "ch2");
-
-	auto r = FFT::getBins("pilgrim.wav");
-	plot->setSamples(r);
+	// Some defaults.
+	plot->setAxesNames("x1", "x2", "ch1", "ch2");
+	plot->setTitles("Frequency (Hz)", "Magnitude");
 
 	QObject::connect(btn, &QPushButton::clicked, [&](){
 		QString filePath = QFileDialog::getOpenFileName(&mainWindow, "Open File", "", "All Files (*)");
@@ -74,11 +69,15 @@ int main(int argc, char* argv[])
 			QApplication::setOverrideCursor(Qt::WaitCursor);
 			auto r = FFT::getBins(filePath.toStdString());
 			plot->setSamples(r);
+			plot->setColumns();
 			QApplication::restoreOverrideCursor();
 		}
 	});
 
-    mainWindow.show();
+	fftw_init_threads();
+	fftw_plan_with_nthreads(omp_get_max_threads() / 2);
+
+	mainWindow.show();
 
     return QApplication::exec();
 }

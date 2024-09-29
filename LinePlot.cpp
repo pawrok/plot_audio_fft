@@ -1,8 +1,4 @@
-//
-// Created by dreph on 10/03/2024.
-//
-
-#include "LinePlot.h"
+#include "LinePlot.hpp"
 
 #include <vtkPlot.h>
 #include <vtkProperty.h>
@@ -17,12 +13,11 @@ LinePlot::LinePlot(vtkGenericOpenGLRenderWindow *window)
 	m_table->AddColumn(m_array_y1);
 	m_table->AddColumn(m_array_y2);
 
-	// Arrays need to have always some name
+	// Arrays need to have always some name_
 	m_array_x1->SetName("x1");
 	m_array_x2->SetName("x2");
 	m_array_y1->SetName("y1");
 	m_array_y2->SetName("y2");
-
 
 	// Set up the view
 	m_view->GetRenderWindow()->SetWindowName("LinePlot");
@@ -48,8 +43,7 @@ LinePlot::LinePlot(vtkGenericOpenGLRenderWindow *window)
 	// view->GetRenderWindow()->SetMultiSamples(0);
 }
 
-void LinePlot::setSamples(const ResultFFT& samples)
-{
+void LinePlot::setSamples(const ResultFFT& samples) {
 	if (samples[0].size() != samples[2].size() || samples[1].size() != samples[3].size())
 		return;
 
@@ -61,38 +55,46 @@ void LinePlot::setSamples(const ResultFFT& samples)
 
 	for (int i = 0; i < samples[0].size(); ++i) {
 		m_table->SetValue(i, 0, samples[0][i]);
-		m_table->SetValue(i, 2, samples[2][i]);
-	}
-	for (int i = 0; i < samples[0].size(); ++i) {
 		m_table->SetValue(i, 1, samples[1][i]);
+		m_table->SetValue(i, 2, samples[2][i]);
 		m_table->SetValue(i, 3, samples[3][i]);
 	}
-//	m_chart->Update();
+
 	m_view->GetRenderWindow()->Render();
+
+	m_chart->ClearPlots();
+	m_chart->AddPlot(vtkChart::LINE);
+	m_chart->AddPlot(vtkChart::LINE);
+	auto plt = m_chart->GetPlot(0);
+	if (plt) {
+		plt->SetInputData(m_table, 0, 2);
+		plt->SetColor(0, 255, 0, 255);
+		plt->SetWidth(1.0);
+	}
+	plt = m_chart->GetPlot(1);
+	if (plt) {
+		plt->SetInputData(m_table, 1, 3);
+		plt->SetColor(255, 0, 0, 255);
+		plt->SetWidth(2.0);
+	}
 }
 
-
-void LinePlot::setColumns(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2)
-{
-	m_array_x1->SetName(x1.data());
-	m_array_x2->SetName(x2.data());
-	m_array_y1->SetName(y1.data());
-	m_array_y2->SetName(y2.data());
-
-	vtkPlot* line = m_chart->AddPlot(vtkChart::LINE);
-	line->SetInputData(m_table, 0, 2);
-	line->SetColor(0, 255, 0, 255);
-	line->SetWidth(1.0);
-	line = m_chart->AddPlot(vtkChart::LINE);
-	line->SetInputData(m_table, 1, 3);
-	line->SetColor(255, 0, 0, 255);
-	line->SetWidth(2.0);
+// todo ?
+void LinePlot::setColumns() {
 	m_chart->GetAxis(0)->SetNumberOfTicks(5);
 	m_chart->GetAxis(1)->SetNumberOfTicks(5);
 	m_chart->GetAxis(1)->SetUnscaledMinimumLimit(20);
 	m_chart->GetAxis(1)->SetUnscaledMaximumLimit(20000);
-//	m_chart->GetAxis(vtkAxis::BOTTOM)->SetRange(2000, 20000);
+}
 
-	m_chart->GetAxis(1)->SetTitle("Frequency (Hz)");
-	m_chart->GetAxis(0)->SetTitle("Magnitude");
+void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2) {
+	m_array_x1->SetName(x1.data());
+	m_array_x2->SetName(x2.data());
+	m_array_y1->SetName(y1.data());
+	m_array_y2->SetName(y2.data());
+}
+
+void LinePlot::setTitles(std::string_view t1, std::string_view t2) {
+	m_chart->GetAxis(1)->SetTitle(t1.data());
+	m_chart->GetAxis(0)->SetTitle(t2.data());
 }

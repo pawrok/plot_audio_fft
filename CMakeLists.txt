@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.27)
-project(CLion_test)
+project(audio_fft_project)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -30,11 +30,11 @@ find_package(VTK COMPONENTS
 )
 
 if(NOT VTK_FOUND)
-    message(FATAL_ERROR "CLion_test: Unable to find the VTK build folder.")
+    message(FATAL_ERROR "audio_fft_project: Unable to find the VTK build folder.")
 endif()
 
 if(NOT(TARGET VTK::GUISupportQt))
-    message(FATAL_ERROR "CLion_test: VTK not built with Qt support.")
+    message(FATAL_ERROR "audio_fft_project: VTK not built with Qt support.")
 endif()
 
 if(NOT DEFINED VTK_QT_VERSION)
@@ -47,7 +47,7 @@ if(${VTK_QT_VERSION} VERSION_GREATER_EQUAL 6)
 endif()
 
 list(SORT qt_components)
-find_package(Qt${VTK_QT_VERSION} QUIET
+find_package(Qt${VTK_QT_VERSION} REQUIRED
     REQUIRED COMPONENTS ${qt_components}
 )
 
@@ -67,65 +67,63 @@ file(GLOB UI_FILES *.ui)
 file(GLOB QT_WRAP *.h)
 file(GLOB CXX_FILES *.cpp)
 
-# For VTK versions greater than or equal to 8.90.0:
-#  CMAKE_AUTOUIC is ON so we handle uic automatically for Qt targets.
-#  CMAKE_AUTOMOC is ON so we handle moc automatically for Qt targets.
-
 # Prevent a "command line is too long" failure in Windows.
 set(CMAKE_NINJA_FORCE_RESPONSE_FILE "ON" CACHE BOOL "Force Ninja to use response files.")
-# CMAKE_AUTOMOC in ON so the MOC headers will be automatically wrapped.
 
 #------------------------- FFTW & libsndfile ---------------------------------------------
-#if(DEFINED ENV{SNDFILE_PATH})
-#    include_directories("$ENV{SNDFILE_PATH}\\include")
-#    set(SNDFILE_LIBRARIES "$ENV{SNDFILE_PATH}\\lib\\sndfile.lib")
-#else()
-#    message(SEND_ERROR "SNDFILE_PATH environment variable is not set.")
-#endif()
-#
-#if(DEFINED ENV{FFTW_PATH})
-#    include_directories("$ENV{FFTW_PATH}")
-#    set(FFTW_LIBRARIES "$ENV{FFTW_PATH}\\libfftw3-3.lib")
-#else()
-#    message(SEND_ERROR "FFTW_PATH environment variable is not set.")
-#endif()
+#find_package(SndFile REQUIRED)
+#find_package(FFTW3 CONFIG REQUIRED)
 
-find_package(SndFile REQUIRED)
-find_package(FFTW3 CONFIG REQUIRED)
+# Set the location of FFTW3 (adjust accordingly):
+set(FFTW3_ROOT "X:/libraries/fftw")
+set(SNDFILE_ROOT "X:/libraries/sndfile")
 
+# Specify where to find FFTW headers
+include_directories("${FFTW3_ROOT}")
+include_directories("${SNDFILE_ROOT}/include")
+
+# Link to FFTW library files
+set(FFTW3_LIB "${FFTW3_ROOT}/libfftw3-3.lib")
+set(SndFile_LIBRARIES "${SNDFILE_ROOT}/lib/sndfile.lib")
 #-----------------------------------------------------------------------------------------
 
-add_executable(CLion_test MACOSX_BUNDLE
+add_executable(audio_fft_project MACOSX_BUNDLE
         ${CXX_FILES} ${UISrcs} ${QT_WRAP}
         LinePlot.cpp
-        LinePlot.h
+        LinePlot.hpp
         FFT.cpp
-        FFT.h
+        FFT.hpp
+        DebugTimer.hpp
+        AudioFile.cpp
+        AudioFile.hpp
 )
 
 if (Qt${VTK_QT_VERSION}Widgets_VERSION VERSION_LESS "5.11.0")
-    qt5_use_modules(CLion_test ${qt_components})
+    qt5_use_modules(audio_fft_project ${qt_components})
 else()
-    target_link_libraries(CLion_test ${qt_modules})
+    target_link_libraries(audio_fft_project ${qt_modules})
 endif()
 
-target_link_libraries(CLion_test ${VTK_LIBRARIES})
-target_link_libraries(CLion_test FFTW3::fftw3)
-target_link_libraries(CLion_test ${SndFile_LIBRARIES})
+target_link_libraries(audio_fft_project ${VTK_LIBRARIES})
+target_link_libraries(audio_fft_project ${SndFile_LIBRARIES})
+target_link_libraries(audio_fft_project "${FFTW3_LIB}")
 
 # vtk_module_autoinit is needed
 vtk_module_autoinit(
-        TARGETS CLion_test
+        TARGETS audio_fft_project
         MODULES ${VTK_LIBRARIES}
 )
 
-# FFTW & libsndfile
-#target_link_libraries(CLion_test ${FFTW_LIBRARIES} ${SNDFILE_LIBRARIES})
+add_custom_command(TARGET audio_fft_project POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${FFTW3_ROOT}/libfftw3-3.dll"
+        $<TARGET_FILE_DIR:audio_fft_project>
+)
 
-#set(DLL_FILES "$ENV{FFTW_PATH}\\libfftw3-3.dll" "$ENV{SNDFILE_PATH}\\bin\\sndfile.dll")
-#foreach(dll ${DLL_FILES})
-#    add_custom_command(TARGET CLion_test POST_BUILD
-#            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-#            "${dll}"
-#            "${PROJECT_SOURCE_DIR}/cmake-build-debug-visual-studio")
-#endforeach()
+add_custom_command(TARGET audio_fft_project POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SNDFILE_ROOT}/bin/sndfile.dll"
+        $<TARGET_FILE_DIR:audio_fft_project>
+)
+
+# TODO: vcpkg chyba zainstalowalo slaba wersje fftw, co nie ma threadow (?)
