@@ -57,7 +57,7 @@ add_executable(audio_fft_project
         LinePlot.hpp
         FFT.cpp
         FFT.hpp
-        DebugTimer.hpp
+        ScopedStopwatch.hpp
         AudioFile.cpp
         AudioFile.hpp
 )

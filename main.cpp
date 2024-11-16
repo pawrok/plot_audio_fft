@@ -1,15 +1,7 @@
-#include <vtkActor.h>
-#include <vtkDataSetMapper.h>
-#include <vtkDoubleArray.h>
-#include <vtkGenericOpenGLRenderWindow.h>
-#include <vtkPointData.h>
-#include <vtkProperty.h>
 #include <vtkRenderer.h>
-#include <vtkSphereSource.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkCallbackCommand.h>
 
-#include <cmath>
 #include <omp.h>
 #include <windows.h>
 
@@ -18,7 +10,6 @@
 
 vtkNew<vtkContextView> view;
 
-// Function to show the file dialog and return the selected file path
 std::string getWindowsSoundFilePath() 
 {
     char filePath[MAX_PATH] = { 0 };
@@ -33,30 +24,25 @@ std::string getWindowsSoundFilePath()
     ofn.lpstrFilter = "Sound Files\0*.WAV;*.MP3;*.FLAC;*.AAC;*.OGG;*.M4A\0All Files\0*.*\0";
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
-    if (GetOpenFileName(&ofn)) {
+    if (GetOpenFileName(&ofn))
         return std::string(filePath);
-    }
-    return std::string(); // Return empty string if the user cancels
+    
+    return std::string();
 }
 
 void onKeyPress(vtkObject* caller, long unsigned int eventId, void* clientData, void* callData)
 {
-    auto interactor = static_cast<vtkRenderWindowInteractor*>(caller);
-    auto plot = static_cast<LinePlot*>(clientData);
-
-    std::cout << "Press 'o' to open a file.\n";
-    std::string key = interactor->GetKeySym();
-
+    std::string key = static_cast<vtkRenderWindowInteractor*>(caller)->GetKeySym();
     if (key == "o") {
         std::string filePath = getWindowsSoundFilePath();
+        if (filePath.empty())
+            return;
 
-        if (!filePath.empty()) {
-            std::cout << "Processing file: " << filePath << std::endl;
-            auto result = FFT::getBins(filePath);
-            plot->setSamples(result);
-            plot->setColumns();
-            view->GetRenderWindow()->Render();
-        }
+        auto result = FFT::getBins(filePath);
+        auto plot = static_cast<LinePlot*>(clientData);
+        plot->setSamples(result);
+        plot->setColumns();
+        view->GetRenderWindow()->Render();
     }
 }
 

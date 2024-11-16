@@ -1,7 +1,7 @@
 #include <cmath>
 
 #include "FFT.hpp"
-#include "DebugTimer.hpp"
+#include "ScopedStopwatch.hpp"
 #include "AudioFile.hpp"
 
 template<typename T>
@@ -24,7 +24,7 @@ std::pair<std::vector<T>, std::vector<T>> averageBins(const std::vector<T>& x, c
 
 ResultFFT FFT::getBins(std::string_view file_name)
 {
-	DebugTimer t("getBins");
+	ScopedStopwatch t("getBins");
 	AudioFile audio(file_name);
 
 	std::vector<fftw_plan> plans;
