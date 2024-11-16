@@ -1,13 +1,3 @@
-#include <QApplication>
-#include <QDockWidget>
-#include <QGridLayout>
-#include <QLabel>
-#include <QMainWindow>
-#include <QPointer>
-#include <QPushButton>
-#include <QFileDialog>
-
-#include <QVTKOpenGLNativeWidget.h>
 #include <vtkActor.h>
 #include <vtkDataSetMapper.h>
 #include <vtkDoubleArray.h>
@@ -16,73 +6,89 @@
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
 #include <vtkSphereSource.h>
+#include <vtkRenderWindowInteractor.h>
+#include <vtkCallbackCommand.h>
 
 #include <cmath>
 #include <omp.h>
+#include <windows.h>
 
 #include "LinePlot.hpp"
 #include "FFT.hpp"
 
+vtkNew<vtkContextView> view;
+
+// Function to show the file dialog and return the selected file path
+std::string getWindowsSoundFilePath() 
+{
+    char filePath[MAX_PATH] = { 0 };
+
+    OPENFILENAME ofn;
+    ZeroMemory(&ofn, sizeof(ofn));
+
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = nullptr; // No specific owner window
+    ofn.lpstrFile = filePath;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = "Sound Files\0*.WAV;*.MP3;*.FLAC;*.AAC;*.OGG;*.M4A\0All Files\0*.*\0";
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+    if (GetOpenFileName(&ofn)) {
+        return std::string(filePath);
+    }
+    return std::string(); // Return empty string if the user cancels
+}
+
+void onKeyPress(vtkObject* caller, long unsigned int eventId, void* clientData, void* callData)
+{
+    auto interactor = static_cast<vtkRenderWindowInteractor*>(caller);
+    auto plot = static_cast<LinePlot*>(clientData);
+
+    std::cout << "Press 'o' to open a file.\n";
+    std::string key = interactor->GetKeySym();
+
+    if (key == "o") {
+        std::string filePath = getWindowsSoundFilePath();
+
+        if (!filePath.empty()) {
+            std::cout << "Processing file: " << filePath << std::endl;
+            auto result = FFT::getBins(filePath);
+            plot->setSamples(result);
+            plot->setColumns();
+            view->GetRenderWindow()->Render();
+        }
+    }
+}
 
 int main(int argc, char* argv[])
 {
-	QApplication app(argc, argv);
+    SetProcessDPIAware();
 
-	QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+    fftw_init_threads();
+    fftw_plan_with_nthreads(omp_get_max_threads() / 2);
 
-    // Main window.
-    QMainWindow* mainWindow = new QMainWindow();
-    mainWindow->resize(1200, 900);
+    view->GetRenderWindow()->SetWindowName("LinePlot");
+    view->GetRenderer()->SetBackground(50 / 255.0, 50 / 255.0, 50 / 255.0);
 
-    // Control area.
-    QDockWidget controlDock;
-    mainWindow->addDockWidget(Qt::LeftDockWidgetArea, &controlDock);
+    vtkNew<vtkRenderWindowInteractor> renderWindowInteractor;
+    renderWindowInteractor->SetRenderWindow(view->GetRenderWindow());
 
-    QLabel controlDockTitle("Control Dock");
-    controlDockTitle.setMargin(20);
-    controlDock.setTitleBarWidget(&controlDockTitle);
+    // Set up a simple plot
+    auto plot = new LinePlot(view.Get());
+    plot->setAxesNames("x1", "x2", "ch1", "ch2");
+    plot->setColumns();
+    plot->setTitles("Frequency (Hz)", "Magnitude");
 
-    QPointer<QVBoxLayout> dockLayout = new QVBoxLayout();
-    QWidget layoutContainer;
-    layoutContainer.setLayout(dockLayout);
-    controlDock.setWidget(&layoutContainer);
+    // Add interaction for opening files
+    vtkNew<vtkCallbackCommand> keyPressCallback;
+    keyPressCallback->SetCallback(onKeyPress);
+    keyPressCallback->SetClientData(plot);
+    renderWindowInteractor->AddObserver(vtkCommand::KeyPressEvent, keyPressCallback);
 
-    auto btn = new QPushButton("Open file");
-    dockLayout->addWidget(btn);
+    // Start rendering
+    view->GetRenderWindow()->Render();
+    view->GetInteractor()->Initialize();
+    view->GetInteractor()->Start();
 
-	auto test = qApp;
-	if (Q_UNLIKELY(!qApp))
-		std::cout << "halo halo!\n";
-	else
-		std::cout << "halo OK\n";
-
-	vtkNew<vtkGenericOpenGLRenderWindow> window;
-
-	// Render area.
-    QVTKOpenGLNativeWidget vtkRenderWidget(window.GetPointer(), &layoutContainer); // = new QVTKOpenGLNativeWidget(&mainWindow);
-    mainWindow->setCentralWidget(&vtkRenderWidget);
-
-	auto plot = new LinePlot(window.Get());
-	// Some defaults.
-	plot->setAxesNames("x1", "x2", "ch1", "ch2");
-	plot->setColumns();
-	plot->setTitles("Frequency (Hz)", "Magnitude");
-
-	QObject::connect(btn, &QPushButton::clicked, [&](){
-		QString filePath = QFileDialog::getOpenFileName(mainWindow, "Open File", "", "All Files (*)");
-		if (!filePath.isEmpty()) {
-			QApplication::setOverrideCursor(Qt::WaitCursor);
-			auto r = FFT::getBins(filePath.toStdString());
-			plot->setSamples(r);
-			plot->setColumns();
-			QApplication::restoreOverrideCursor();
-		}
-	});
-
-	fftw_init_threads();
-	fftw_plan_with_nthreads(omp_get_max_threads() / 2);
-
-	mainWindow->show();
-
-    return app.exec();
+    return 0;
 }

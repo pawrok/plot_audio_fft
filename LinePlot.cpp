@@ -6,7 +6,7 @@
 #include <vtkRenderer.h>
 #include <vtkAxis.h>
 
-LinePlot::LinePlot(vtkGenericOpenGLRenderWindow *window)
+LinePlot::LinePlot(vtkContextView *view)
 {
 	m_table->AddColumn(m_array_x1);
 	m_table->AddColumn(m_array_x2);
@@ -19,31 +19,15 @@ LinePlot::LinePlot(vtkGenericOpenGLRenderWindow *window)
 	m_array_y1->SetName("y1");
 	m_array_y2->SetName("y2");
 
-	// Set up the view
-	m_view->GetRenderWindow()->SetWindowName("LinePlot");
-	m_view->GetRenderer()->SetBackground(50/255.0,50/255.0,50/255.0);
-
     // Add multiple line plots, setting the colors etc.
-	m_view->GetScene()->AddItem(m_chart);
-
-	// Add view to VTK window, which is an interface to Qt.
-	m_view->SetRenderWindow(window);
+	view->GetScene()->AddItem(m_chart);
 
 	// Set the x-axis to logarithmic scale
 	m_chart->GetAxis(vtkAxis::BOTTOM)->SetLogScale(true);
-
-	// For dotted line, the line type can be from 2 to 5 for different dash/dot
-	// patterns (see enum in vtkPen containing DASH_LINE, value 2):
-	// #ifndef WIN32
-	//   line->GetPen()->SetLineType(vtkPen::DASH_LINE);
-	// #endif
-	// (ifdef-ed out on Windows because DASH_LINE does not work on Windows
-	//  machines with built-in Intel HD graphics card...)
-
-	// view->GetRenderWindow()->SetMultiSamples(0);
 }
 
-void LinePlot::setSamples(const ResultFFT& samples) {
+void LinePlot::setSamples(const ResultFFT& samples) 
+{
 	if (samples[0].size() != samples[2].size() || samples[1].size() != samples[3].size())
 		return;
 
@@ -59,8 +43,6 @@ void LinePlot::setSamples(const ResultFFT& samples) {
 		m_table->SetValue(i, 2, samples[2][i]);
 		m_table->SetValue(i, 3, samples[3][i]);
 	}
-
-	m_view->GetRenderWindow()->Render();
 
 	m_chart->ClearPlots();
 	m_chart->AddPlot(vtkChart::LINE);
@@ -80,28 +62,24 @@ void LinePlot::setSamples(const ResultFFT& samples) {
 }
 
 // todo ?
-void LinePlot::setColumns() {
+void LinePlot::setColumns() 
+{
 	m_chart->GetAxis(0)->SetNumberOfTicks(5);
 	m_chart->GetAxis(1)->SetNumberOfTicks(5);
 	m_chart->GetAxis(1)->SetUnscaledMinimumLimit(20);
 	m_chart->GetAxis(1)->SetUnscaledMaximumLimit(20000);
 }
 
-void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2) {
+void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2) 
+{
 	m_array_x1->SetName(x1.data());
 	m_array_x2->SetName(x2.data());
 	m_array_y1->SetName(y1.data());
 	m_array_y2->SetName(y2.data());
 }
 
-void LinePlot::setTitles(std::string t1, std::string t2) {
-	std::cout << "dasdasd" << t1 << t2 << "xx\n";
-	vtkStdString test = t1;
-	char fff[256] = "fasdsd";
-	memcpy(fff, t1.data(), t1.size());
-	m_chart->GetAxis(1)->SetTitle(fff);
-	//m_chart->GetAxis(0)->SetTitle(t2);
-//	m_chart->GetAxis(1)->SetTitle("s");
-//	fflush(stdout);
-//	auto ts = m_chart->GetAxis(0);
+void LinePlot::setTitles(std::string t1, std::string t2) 
+{
+	m_chart->GetAxis(1)->SetTitle(t1);
+	m_chart->GetAxis(0)->SetTitle(t2);
 }
