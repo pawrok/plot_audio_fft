@@ -31,12 +31,12 @@ int main(int argc, char* argv[])
 	QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
     // Main window.
-    QMainWindow mainWindow;
-    mainWindow.resize(1200, 900);
+    QMainWindow* mainWindow = new QMainWindow();
+    mainWindow->resize(1200, 900);
 
     // Control area.
     QDockWidget controlDock;
-    mainWindow.addDockWidget(Qt::LeftDockWidgetArea, &controlDock);
+    mainWindow->addDockWidget(Qt::LeftDockWidgetArea, &controlDock);
 
     QLabel controlDockTitle("Control Dock");
     controlDockTitle.setMargin(20);
@@ -50,21 +50,26 @@ int main(int argc, char* argv[])
     auto btn = new QPushButton("Open file");
     dockLayout->addWidget(btn);
 
-    // Render area.
-    QPointer<QVTKOpenGLNativeWidget> vtkRenderWidget = new QVTKOpenGLNativeWidget();
-    mainWindow.setCentralWidget(vtkRenderWidget);
+	auto test = qApp;
+	if (Q_UNLIKELY(!qApp))
+		std::cout << "halo halo!\n";
+	else
+		std::cout << "halo OK\n";
 
-    // VTK part.
-    vtkNew<vtkGenericOpenGLRenderWindow> window;
-    vtkRenderWidget->setRenderWindow(window.Get());
+	vtkNew<vtkGenericOpenGLRenderWindow> window;
+
+	// Render area.
+    QVTKOpenGLNativeWidget vtkRenderWidget(window.GetPointer(), &layoutContainer); // = new QVTKOpenGLNativeWidget(&mainWindow);
+    mainWindow->setCentralWidget(&vtkRenderWidget);
 
 	auto plot = new LinePlot(window.Get());
 	// Some defaults.
 	plot->setAxesNames("x1", "x2", "ch1", "ch2");
+	plot->setColumns();
 	plot->setTitles("Frequency (Hz)", "Magnitude");
 
 	QObject::connect(btn, &QPushButton::clicked, [&](){
-		QString filePath = QFileDialog::getOpenFileName(&mainWindow, "Open File", "", "All Files (*)");
+		QString filePath = QFileDialog::getOpenFileName(mainWindow, "Open File", "", "All Files (*)");
 		if (!filePath.isEmpty()) {
 			QApplication::setOverrideCursor(Qt::WaitCursor);
 			auto r = FFT::getBins(filePath.toStdString());
@@ -77,7 +82,7 @@ int main(int argc, char* argv[])
 	fftw_init_threads();
 	fftw_plan_with_nthreads(omp_get_max_threads() / 2);
 
-	mainWindow.show();
+	mainWindow->show();
 
-    return QApplication::exec();
+    return app.exec();
 }

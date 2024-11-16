@@ -5,7 +5,16 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-
+#set(Qt6_DIR "C:/Qt/6.8.0/msvc2022_64/lib")
+# set(Qt6_DIR "C:/Qt/Qt-6.8.0/lib")
+# set(VTK_DIR "D:/VTK/build_good")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(QT_DIR "C:/Qt/Qt-6.8.0")
+    set(VTK_DIR "D:/VTK/buildd")
+else ()
+    set(QT_DIR "C:/Qt/Qt-6.8.0")
+    set(VTK_DIR "D:/VTK/build")
+endif()
 if(POLICY CMP0020)
     cmake_policy(SET CMP0020 NEW)
     cmake_policy(SET CMP0071 NEW)
@@ -18,7 +27,6 @@ find_package(VTK COMPONENTS
         CommonCore
         CommonDataModel
         FiltersSources
-        GUISupportQt
         InteractionStyle
         RenderingContextOpenGL2
         RenderingCore
@@ -87,7 +95,7 @@ set(FFTW3_LIB "${FFTW3_ROOT}/libfftw3-3.lib")
 set(SndFile_LIBRARIES "${SNDFILE_ROOT}/lib/sndfile.lib")
 #-----------------------------------------------------------------------------------------
 
-add_executable(audio_fft_project MACOSX_BUNDLE
+add_executable(audio_fft_project
         ${CXX_FILES} ${UISrcs} ${QT_WRAP}
         LinePlot.cpp
         LinePlot.hpp

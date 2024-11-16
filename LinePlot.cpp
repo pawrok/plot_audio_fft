@@ -94,7 +94,14 @@ void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::strin
 	m_array_y2->SetName(y2.data());
 }
 
-void LinePlot::setTitles(std::string_view t1, std::string_view t2) {
-	m_chart->GetAxis(1)->SetTitle(t1.data());
-	m_chart->GetAxis(0)->SetTitle(t2.data());
+void LinePlot::setTitles(std::string t1, std::string t2) {
+	std::cout << "dasdasd" << t1 << t2 << "xx\n";
+	vtkStdString test = t1;
+	char fff[256] = "fasdsd";
+	memcpy(fff, t1.data(), t1.size());
+	m_chart->GetAxis(1)->SetTitle(fff);
+	//m_chart->GetAxis(0)->SetTitle(t2);
+//	m_chart->GetAxis(1)->SetTitle("s");
+//	fflush(stdout);
+//	auto ts = m_chart->GetAxis(0);
 }
