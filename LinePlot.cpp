@@ -6,7 +6,7 @@
 #include <vtkRenderer.h>
 #include <vtkAxis.h>
 
-LinePlot::LinePlot(vtkContextView *view)
+LinePlot::LinePlot(vtkGenericOpenGLRenderWindow* window)
 {
 	m_table->AddColumn(m_array_x1);
 	m_table->AddColumn(m_array_x2);
@@ -19,8 +19,10 @@ LinePlot::LinePlot(vtkContextView *view)
 	m_array_y1->SetName("y1");
 	m_array_y2->SetName("y2");
 
-    // Add multiple line plots, setting the colors etc.
-	view->GetScene()->AddItem(m_chart);
+    // Add plot to the view. Probably change it in the future.
+	m_view->SetRenderWindow(window);
+	m_view->GetScene()->AddItem(m_chart);
+	m_view->GetRenderWindow()->SetWindowName("LinePlot");
 
 	// Set the x-axis to logarithmic scale
 	m_chart->GetAxis(vtkAxis::BOTTOM)->SetLogScale(true);
@@ -59,6 +61,9 @@ void LinePlot::setSamples(const ResultFFT& samples)
 		plt->SetColor(255, 0, 0, 255);
 		plt->SetWidth(2.0);
 	}
+	
+	// Render
+	m_view->GetRenderWindow()->Render();
 }
 
 // todo ?

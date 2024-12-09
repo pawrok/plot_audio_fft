@@ -12,28 +12,35 @@ endif()
 set(CMAKE_NINJA_FORCE_RESPONSE_FILE "ON" CACHE BOOL "Force Ninja to use response files.")
 
 #------------------------------- VTK ---------------------------------
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(VTK_DIR "D:/VTK/buildd")
-else ()
-    set(VTK_DIR "D:/VTK/build")
-endif()
 find_package(VTK COMPONENTS
         ChartsCore
         ViewsContext2D
         CommonColor
         CommonCore
         CommonDataModel
-        FiltersSources
         InteractionStyle
         RenderingContextOpenGL2
         RenderingCore
         RenderingFreeType
         RenderingGL2PSOpenGL2
         RenderingOpenGL2
+        GUISupportQt
+        REQUIRED
 )
 if(NOT VTK_FOUND)
     message(FATAL_ERROR "audio_fft_project: Unable to find the VTK build folder.")
 endif()
+if(NOT(TARGET VTK::GUISupportQt))
+  message(FATAL_ERROR "VTK not built with Qt support.")
+endif()
+
+
+#------------------------------- Qt ---------------------------------
+find_package(Qt6 COMPONENTS Core Gui Widgets OpenGLWidgets REQUIRED)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
 
 #------------------------- FFTW & libsndfile -------------------------
 # Set the location of FFTW3 (adjust accordingly):
@@ -51,6 +58,7 @@ set(SndFile_LIBRARIES "${SNDFILE_ROOT}/lib/sndfile.lib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 file(GLOB CXX_FILES *.cpp)
+
 add_executable(audio_fft_project
         ${CXX_FILES}
         LinePlot.cpp
@@ -65,6 +73,7 @@ add_executable(audio_fft_project
 target_link_libraries(audio_fft_project ${VTK_LIBRARIES})
 target_link_libraries(audio_fft_project ${SndFile_LIBRARIES})
 target_link_libraries(audio_fft_project "${FFTW3_LIB}")
+target_link_libraries(audio_fft_project Qt6::Core Qt6::Gui Qt6::Widgets)
 
 # vtk_module_autoinit is needed
 vtk_module_autoinit(

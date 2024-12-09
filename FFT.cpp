@@ -64,6 +64,7 @@ ResultFFT FFT::getBins(std::string_view file_name)
 	for (auto& out : fft_out)
 		fftw_free(out);
 
+	// Limit data to draw for performance reasons.
 	int bin_size = 100;
 	auto b1 = averageBins(result[0], result[2], bin_size);
 	auto b2 = averageBins(result[1], result[3], bin_size);

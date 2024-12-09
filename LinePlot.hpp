@@ -10,7 +10,7 @@
 
 class LinePlot {
 public:
-	explicit LinePlot(vtkContextView* window);
+	explicit LinePlot(vtkGenericOpenGLRenderWindow* window);
 	void setColumns();
 	void setSamples(const ResultFFT& samples);
 	void setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2);
@@ -23,4 +23,5 @@ private:
 	vtkNew<vtkFloatArray> m_array_y1;
 	vtkNew<vtkFloatArray> m_array_y2;
 	vtkNew<vtkChartXY> m_chart;
+	vtkNew<vtkContextView> m_view;
 };

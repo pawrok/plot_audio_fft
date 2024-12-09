@@ -8,8 +8,10 @@ void AudioFile::load(std::string_view file_name) {
 	}
 
 	file_ = sf_open(file_name.data(), SFM_READ, &info_);
-	if (!file_)
-		throw std::runtime_error("Error opening audio file.");
+	if (!file_) {
+		std::string err = sf_strerror(file_);
+		throw std::runtime_error("Error opening audio file." + err);
+	}
 
 	// todo: catch allocation failure? files can be gigabyte big!
 	auto audio_data = new double[info_.channels * info_.frames];
