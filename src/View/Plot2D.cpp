@@ -1,10 +1,9 @@
-#include "LinePlot.hpp"
-
-#include <vtkPlot.h>
-#include <vtkProperty.h>
-#include <vtkRenderWindowInteractor.h>
-#include <vtkRenderer.h>
+#include <print>
 #include <vtkAxis.h>
+#include "Plot2D.hpp"
+
+#include <vtkRenderer.h>
+#include <vtkPlot.h>
 
 LinePlot::LinePlot(vtkGenericOpenGLRenderWindow* window)
 {
@@ -19,13 +18,14 @@ LinePlot::LinePlot(vtkGenericOpenGLRenderWindow* window)
 	m_array_y1->SetName("y1");
 	m_array_y2->SetName("y2");
 
-    // Add plot to the view. Probably change it in the future.
+    // Add a plot to the view. Probably change it in the future.
 	m_view->SetRenderWindow(window);
 	m_view->GetScene()->AddItem(m_chart);
 	m_view->GetRenderWindow()->SetWindowName("LinePlot");
 
-	// Set the x-axis to logarithmic scale
+	// Set the x-axis to a logarithmic scale
 	m_chart->GetAxis(vtkAxis::BOTTOM)->SetLogScale(true);
+	m_view->GetRenderer()->SetBackground(42 / 255.0, 42 / 255.0, 42 / 255.0);
 }
 
 void LinePlot::setSamples(const ResultFFT& samples) 
@@ -87,4 +87,10 @@ void LinePlot::setTitles(std::string t1, std::string t2)
 {
 	m_chart->GetAxis(1)->SetTitle(t1);
 	m_chart->GetAxis(0)->SetTitle(t2);
+}
+
+void LinePlot::resetCamera()
+{
+	m_chart->RecalculateBounds();
+	std::print("reset used\n");
 }

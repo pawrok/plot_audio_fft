@@ -1,11 +1,9 @@
 #pragma once
-
 #include <memory>
 #include <string_view>
 #include <sndfile.h>
 
 // Loads audio file using libsndfile
-
 class AudioFile {
 public:
 	explicit AudioFile(std::string_view file_name)
