@@ -9,7 +9,7 @@ void AudioFile::load(std::string_view file_name) {
 
 	file_ = sf_open(file_name.data(), SFM_READ, &info_);
 	if (!file_) {
-		std::string err = sf_strerror(file_);
+		const std::string err = sf_strerror(file_);
 		throw std::runtime_error("Error opening audio file." + err);
 	}
 
@@ -24,7 +24,7 @@ void AudioFile::load(std::string_view file_name) {
 }
 
 // Channels counted from 0
-double *AudioFile::getChannelData(unsigned int ch) {
+double *AudioFile::getChannelData(unsigned int ch) const {
 	if (ch >= info_.channels)
 		throw std::runtime_error("Wrong channel requested.");
 

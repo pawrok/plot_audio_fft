@@ -14,7 +14,6 @@ public:
 	void setSamples(const ResultFFT& samples);
 	void setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2);
 	void setTitles(std::string t1, std::string t2);
-
 	void resetCamera();
 
 private:

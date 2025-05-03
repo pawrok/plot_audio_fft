@@ -15,8 +15,8 @@ public:
         Stop();
     }
 private:
-    std::chrono::time_point<std::chrono::high_resolution_clock> start_tp_;
     std::string name_;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_tp_;
     inline static std::mutex output_mutex_;
 
     void Stop() {

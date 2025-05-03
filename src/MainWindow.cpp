@@ -1,8 +1,11 @@
 #include "MainWindow.hpp"
 
+#include <qcoreapplication.h>
+
+#include "FFT.hpp"
+
 #include <QVTKOpenGLNativeWidget.h>
 #include <QDockWidget>
-#include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QSlider>
@@ -11,8 +14,6 @@
 #include <QFileDialog>
 #include <QProgressBar>
 
-#include <vtkGenericOpenGLRenderWindow.h>
-#include <vtkRenderer.h>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -25,9 +26,13 @@ MainWindow::MainWindow(QWidget* parent)
 
 void MainWindow::createCentralVTKWidget()
 {
-    m_vtkWidget = new QVTKOpenGLNativeWidget(this);
+    m_vtkWidget = new QVTKOpenGLNativeWidget();
     setCentralWidget(m_vtkWidget);
     m_vtkWidget->setRenderWindow(m_renderWindow.Get());
+    m_plot = std::make_unique<LinePlot>(m_renderWindow.Get());
+    m_plot->setAxesNames("x1", "x2", "ch1", "ch2");
+    m_plot->setColumns();
+    m_plot->setTitles("Frequency (Hz)", "Magnitude");
 }
 
 void MainWindow::createControlDock()
@@ -50,7 +55,7 @@ void MainWindow::createControlDock()
     m_spinLen    = new QDoubleSpinBox;
     m_spinLen->setPrefix("Length: ");
     m_spinLen->setSuffix(" s");
-    m_spinLen->setRange(0.01, 3600.0);       // min 10 ms, max 1 h
+    m_spinLen->setRange(0.01, 3600.0);
     m_spinLen->setDecimals(3);
     m_spinLen->setValue(20.0);
 
@@ -103,27 +108,17 @@ void MainWindow::loadAudioFile()
     if (fn.isEmpty())
         return;
 
+    m_currentFile = fn;
+
     // show busy
     m_progress->setVisible(true);
     m_lblFile->setText(tr("Loading …"));
+    QCoreApplication::processEvents();
 
-    // async load with libsndfile (or your own wrapper)
-    // QtConcurrent::run([this, fn]{
-    //     // ---- your code: open with sndfile, decode to float mono -----------------
-    //     // fill m_currentSamples, discover durationSec
-    //     double durationSec = 0.0; // placeholder
-    //     // -------------------------------------------------------------------------
-    //
-    //     // after done, switch back to the UI thread
-    //     QMetaObject::invokeMethod(this, [this, fn, durationSec]() {
-    //         m_currentFile = fn;
-    //         m_lblFile->setText(fn);
-    //         m_slider->setMaximum(static_cast<int>(durationSec * 1000)); // slider in milliseconds
-    //         enableControls(true);
-    //         m_progress->setVisible(false);
-    //         computeAndRenderFFT();
-    //     });
-    // });
+    // compute
+    computeAndRenderFFT();
+    m_lblFile->setText(tr("File loaded: %1").arg(fn));
+    m_progress->setVisible(false);
 }
 
 void MainWindow::segmentStartChanged(double)          { computeAndRenderFFT(); }
@@ -139,17 +134,14 @@ void MainWindow::sliderMoved(int posMs)
 
 void MainWindow::computeAndRenderFFT()
 {
-    if (m_currentSamples.empty()) return;
-
-    const double startSec = m_spinStart->value();
-    const double lenSec   = m_spinLen->value();
-
-    // -------- (a) extract fragment -----------------------------------------
-    // figure out sample range, copy to tmp buffer
-    // -------- (b) run FFT using fftw3 --------------------------------------
-    // -------- (c) pipe magnitude array into VTK ----------------------------
-    // (You’ll probably build a vtkImageData or vtkPolyData and
-    //  attach it to an existing vtkActor in m_vtkWidget’s renderer.)
-    // Finally call:
-    //   m_vtkWidget->renderWindow()->Render();
+    const auto result = FFT::getBins(m_currentFile.toStdString());
+    
+    // Check if we have valid data
+    if (!result[0].empty() && !result[2].empty()) {
+        m_plot->setSamples(result);
+        // Add a manual reset camera call to ensure proper view
+        // m_plot->resetCamera();
+        m_renderWindow->Render();
+        enableControls(true);
+    }
 }

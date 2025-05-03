@@ -1,8 +1,9 @@
 #pragma once
-
+#include "Plot2D.hpp"
 #include <QMainWindow>
 #include <memory>
 #include <vtkGenericOpenGLRenderWindow.h>
+#include <vtkRenderer.h>
 
 class QVTKOpenGLNativeWidget;
 class QLabel;
@@ -23,7 +24,7 @@ private slots:
 	void segmentStartChanged(double);
 	void segmentLengthChanged(double);
 	void sliderMoved(int);
-	void computeAndRenderFFT();          // hook your fftw3 + VTK pipeline here
+	void computeAndRenderFFT();
 
 private:
 	// --- helpers -----------------------------------------------------------
@@ -35,6 +36,8 @@ private:
 	// --- UI members --------------------------------------------------------
 	QVTKOpenGLNativeWidget* m_vtkWidget{nullptr};
 	vtkNew<vtkGenericOpenGLRenderWindow> m_renderWindow;
+	std::unique_ptr<LinePlot> m_plot;
+	// vtkNew<vtkRenderer> m_renderer;
 
 	// controls
 	QPushButton*     m_btnLoad{nullptr};
@@ -46,5 +49,4 @@ private:
 
 	// --- state -------------------------------------------------------------
 	QString          m_currentFile;
-	std::vector<float> m_currentSamples; // 32-bit float mono buffer (for example)
 };

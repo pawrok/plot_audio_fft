@@ -17,6 +17,7 @@ int main(int argc, char* argv[])
     QApplication::setStyle(QStyleFactory::create("Fusion"));
     MainWindow mw;
     mw.resize(1200, 800);
+    mw.show();
 
     return QApplication::exec();
 }

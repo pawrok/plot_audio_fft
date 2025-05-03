@@ -19,7 +19,7 @@ public:
 	unsigned getFrameCount() const { return info_.frames; }
 	unsigned getChannelCount() const { return info_.channels; }
 	unsigned getSampleRate() const { return info_.samplerate; }
-	double* getChannelData(unsigned ch);
+	double* getChannelData(unsigned ch) const;
 
 private:
 	std::unique_ptr<double[]> samples_;

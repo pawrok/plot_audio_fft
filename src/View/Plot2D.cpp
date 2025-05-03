@@ -63,6 +63,7 @@ void LinePlot::setSamples(const ResultFFT& samples)
 	}
 	
 	// Render
+	setColumns();
 	m_view->GetRenderWindow()->Render();
 }
 
