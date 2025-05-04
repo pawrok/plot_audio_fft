@@ -12,14 +12,10 @@ public:
         start_tp_(std::chrono::high_resolution_clock::now()) {
     }
     ~ScopedStopwatch() {
-        Stop();
+        stop();
     }
-private:
-    std::string name_;
-    std::chrono::time_point<std::chrono::high_resolution_clock> start_tp_;
-    inline static std::mutex output_mutex_;
-
-    void Stop() {
+    void stop() {
+        if (stopped_) return;
         using namespace std::chrono;
         auto end_tp = high_resolution_clock::now();
         auto start = duration_cast<microseconds>(start_tp_.time_since_epoch()).count();
@@ -28,5 +24,11 @@ private:
 
         std::lock_guard<std::mutex> lock(output_mutex_);
         std::print("Stopwatch {} finished with duration {}.{}(ms).\n", name_, diff_us / 1000, diff_us % 1000);
+        stopped_ = true;
     }
+private:
+    std::string name_;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_tp_;
+    inline static std::mutex output_mutex_;
+    bool stopped_ = false;
 };
