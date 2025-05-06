@@ -1,19 +1,17 @@
 #include "MainWindow.hpp"
-
-#include <qcoreapplication.h>
-
 #include "FFT.hpp"
 
+#include <qcoreapplication.h>
 #include <QVTKOpenGLNativeWidget.h>
 #include <QDockWidget>
 #include <QHBoxLayout>
 #include <QPushButton>
-#include <QSlider>
 #include <QDoubleSpinBox>
 #include <QLabel>
 #include <QFileDialog>
 #include <QProgressBar>
-
+#include <QTimer>
+#include <sndfile.h>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -37,111 +35,98 @@ void MainWindow::createCentralVTKWidget()
 
 void MainWindow::createControlDock()
 {
-    auto* dock   = new QDockWidget(tr("Controls"), this);
-    dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    auto* dock = new QDockWidget(this);
+    dock->setAllowedAreas(Qt::TopDockWidgetArea);
+    dock->setFeatures(QDockWidget::NoDockWidgetFeatures);
+    dock->setTitleBarWidget(new QWidget);
 
-    // --- load file --------------------------------------------------------
-    m_btnLoad    = new QPushButton(tr("Load Audio…"));
-    m_lblFile    = new QLabel(tr("<i>No file loaded</i>"));
+    m_btnLoad = new QPushButton(tr("Load Audio…"));
+    m_progress = new QProgressBar;
+    m_progress->setRange(0, 0);
+
+    m_stackLay = new QStackedLayout;
+    m_stackLay->addWidget(m_btnLoad);    // index 0
+    m_stackLay->addWidget(m_progress);   // index 1
+
+    auto* loader = new QWidget;
+    loader->setLayout(m_stackLay);
+
+    m_lblFile     = new QLabel(tr("<i>No file loaded</i>"));
     m_lblFile->setWordWrap(true);
+    m_lblDuration = new QLabel(tr("Total: 0.000 s"));
+    m_range       = new RangeSlider;
 
-    // --- start & length ----------------------------------------------------
-    m_spinStart  = new QDoubleSpinBox;
-    m_spinStart->setPrefix("Start: ");
-    m_spinStart->setSuffix(" s");
-    m_spinStart->setRange(0.0, 1e6);
-    m_spinStart->setDecimals(3);
+    auto* row1 = new QHBoxLayout;
+    row1->addWidget(loader);
+    row1->addWidget(m_lblFile, 1);
+    row1->addWidget(m_lblDuration);
 
-    m_spinLen    = new QDoubleSpinBox;
-    m_spinLen->setPrefix("Length: ");
-    m_spinLen->setSuffix(" s");
-    m_spinLen->setRange(0.01, 3600.0);
-    m_spinLen->setDecimals(3);
-    m_spinLen->setValue(20.0);
-
-    // --- slider (global position) -----------------------------------------
-    m_slider     = new QSlider(Qt::Horizontal);
-    m_slider->setEnabled(false);
-
-    // --- progress bar ------------------------------------------------------
-    m_progress   = new QProgressBar;
-    m_progress->setRange(0, 0);  // busy state by default
-    m_progress->setVisible(false);
-
-    // --- layout ------------------------------------------------------------
-    auto* lay    = new QVBoxLayout;
-    lay->addWidget(m_btnLoad);
-    lay->addWidget(m_lblFile);
-    lay->addSpacing(8);
-    lay->addWidget(m_spinStart);
-    lay->addWidget(m_spinLen);
-    lay->addWidget(m_slider);
-    lay->addWidget(m_progress);
-    lay->addStretch(1);
+    auto* lay = new QVBoxLayout;
+    lay->addLayout(row1);
+    lay->addWidget(m_range);
 
     auto* w = new QWidget;
     w->setLayout(lay);
     dock->setWidget(w);
-    addDockWidget(Qt::LeftDockWidgetArea, dock);
+    addDockWidget(Qt::TopDockWidgetArea, dock);
+    dock->setFixedHeight(dock->sizeHint().height());
 
     enableControls(false);
 }
 
 void MainWindow::wireConnections()
 {
-    connect(m_btnLoad,  &QPushButton::clicked,          this, &MainWindow::loadAudioFile);
-    connect(m_spinStart,&QDoubleSpinBox::valueChanged,  this, &MainWindow::segmentStartChanged);
-    connect(m_spinLen,  &QDoubleSpinBox::valueChanged,  this, &MainWindow::segmentLengthChanged);
-    connect(m_slider,   &QSlider::sliderMoved,          this, &MainWindow::sliderMoved);
+    connect(m_btnLoad, &QPushButton::clicked, this, &MainWindow::loadAudioFile);
+    connect(m_range,   &RangeSlider::valuesChanged, this, &MainWindow::rangeChanged);
 }
 
 void MainWindow::enableControls(bool enabled)
 {
-    m_spinStart->setEnabled(enabled);
-    m_spinLen->setEnabled(enabled);
-    m_slider->setEnabled(enabled);
+    m_range->setEnabled(enabled);
 }
 
 void MainWindow::loadAudioFile()
 {
     const QString fn = QFileDialog::getOpenFileName(this, tr("Open audio"), {}, tr("Audio files (*.wav *.flac *.ogg *.mp3)"));
-    if (fn.isEmpty())
-        return;
+    if (fn.isEmpty()) return;
 
-    m_currentFile = fn;
+    m_stackLay->setCurrentIndex(1);
+    qApp->processEvents();
 
-    // show busy
-    m_progress->setVisible(true);
-    m_lblFile->setText(tr("Loading …"));
-    QCoreApplication::processEvents();
+    m_audioFile.reset(new AudioFile(fn.toStdString()));
 
-    // compute
-    computeAndRenderFFT();
+    SF_INFO info {};
+    if (SNDFILE* f = sf_open(fn.toStdString().c_str(), SFM_READ, &info)) {
+        m_totalSec = static_cast<double>(info.frames) / info.samplerate;
+        sf_close(f);
+    } else m_totalSec = 0.0;
+
+    m_lblDuration->setText(
+        tr("Total: %1 s").arg(QString::number(m_totalSec, 'f', 3)));
     m_lblFile->setText(tr("File loaded: %1").arg(fn));
-    m_progress->setVisible(false);
-}
 
-void MainWindow::segmentStartChanged(double)          { computeAndRenderFFT(); }
-void MainWindow::segmentLengthChanged(double)         { computeAndRenderFFT(); }
-
-void MainWindow::sliderMoved(int posMs)
-{
-    m_spinStart->blockSignals(true);
-    m_spinStart->setValue(posMs / 1000.0);
-    m_spinStart->blockSignals(false);
     computeAndRenderFFT();
+
+    m_lblDuration->setText(tr("Track duration: %1 s").arg(QString::number(m_totalSec, 'f', 3)));
+    m_lblFile->setText(tr("File loaded: %1").arg(fn));
+
+    m_stackLay->setCurrentIndex(0);
 }
 
 void MainWindow::computeAndRenderFFT()
 {
-    const auto result = FFT::getBins(m_currentFile.toStdString());
-    
-    // Check if we have valid data
+    const auto result = FFT::getBins(m_audioFile.get());
     if (!result[0].empty() && !result[2].empty()) {
         m_plot->setSamples(result);
-        // Add a manual reset camera call to ensure proper view
-        // m_plot->resetCamera();
         m_renderWindow->Render();
         enableControls(true);
     }
+}
+
+void MainWindow::rangeChanged(int lo, int hi)
+{
+    if (m_totalSec <= 0.0) return;
+    m_segStartSec = (lo / 1000.0) * m_totalSec;
+    m_segLenSec   = ((hi - lo) / 1000.0) * m_totalSec;
+    // computeAndRenderFFT();
 }

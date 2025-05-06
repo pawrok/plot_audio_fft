@@ -1,32 +1,40 @@
 #include <stdexcept>
 #include "AudioFile.hpp"
+#include <memory>
 
-void AudioFile::load(std::string_view file_name) {
-	if (file_) {
-		sf_close(file_);
-		file_ = nullptr;
-	}
+using sf_handle = std::unique_ptr<SNDFILE, decltype(&sf_close)>;
 
-	file_ = sf_open(file_name.data(), SFM_READ, &info_);
-	if (!file_) {
-		const std::string err = sf_strerror(file_);
-		throw std::runtime_error("Error opening audio file." + err);
-	}
+AudioFile::AudioFile(std::string_view path) {
+	SNDFILE* raw = sf_open(path.data(), SFM_READ, &m_info);
+	if (!raw)
+		throw std::runtime_error(std::string("AudioFile: cannot open \"") + path.data() + "\": " + sf_strerror(raw));
+	const auto file = sf_handle(raw, sf_close);
 
-	// todo: catch allocation failure? files can be gigabyte big!
-	auto audio_data = new double[info_.channels * info_.frames];
+	std::vector<float> tmp(static_cast<size_t>(m_info.frames) * m_info.channels);
+	const sf_count_t nread = sf_readf_float(file.get(), tmp.data(), m_info.frames);
+	if (nread != m_info.frames)
+		throw std::runtime_error("AudioFile: short read.");
 
-	auto frames_read = sf_readf_double(file_, audio_data, info_.frames);
-	if (frames_read != info_.frames)
-		throw std::runtime_error("Error reading audio data.");
+	// allocate per-channel storage
+	m_channels.resize(m_info.channels, std::vector<float>(m_info.frames));
 
-	samples_.reset(audio_data);
+	// de-interleave
+	for (sf_count_t frame = 0; frame < m_info.frames; ++frame)
+		for (int ch = 0; ch < m_info.channels; ++ch)
+			m_channels[ch][frame] = tmp[frame * m_info.channels + ch];
 }
 
-// Channels counted from 0
-double *AudioFile::getChannelData(unsigned int ch) const {
-	if (ch >= info_.channels)
-		throw std::runtime_error("Wrong channel requested.");
-
-	return samples_.get() + info_.frames * ch;
+std::span<float> AudioFile::channel(size_t idx)
+{
+	if (idx >= m_channels.size())
+		throw std::out_of_range("AudioFile::channel(): bad channel index");
+	return m_channels[idx];
 }
+
+std::span<const float> AudioFile::channel(size_t idx) const
+{
+	if (idx >= m_channels.size())
+		throw std::out_of_range("AudioFile::channel(): bad channel index");
+	return m_channels[idx];
+}
+

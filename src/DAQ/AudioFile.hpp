@@ -1,29 +1,24 @@
 #pragma once
-#include <memory>
 #include <string_view>
 #include <sndfile.h>
+#include <vector>
+#include <span>
 
 // Loads audio file using libsndfile
 class AudioFile {
 public:
-	explicit AudioFile(std::string_view file_name)
-		: file_name_(file_name) {
-		load(file_name_);
-	}
-	~AudioFile() {
-		if (file_)
-			sf_close(file_);
-	}
+	explicit AudioFile(std::string_view path);
 
-	void load(std::string_view file_name);
-	unsigned getFrameCount() const { return info_.frames; }
-	unsigned getChannelCount() const { return info_.channels; }
-	unsigned getSampleRate() const { return info_.samplerate; }
-	double* getChannelData(unsigned ch) const;
+	// Access
+	std::span<float> channel(size_t idx);
+	std::span<const float> channel(size_t idx) const;
+
+	// Meta-data
+	sf_count_t frames() const noexcept { return m_info.frames; }
+	int channels() const noexcept { return m_info.channels; }
+	int rate() const noexcept { return m_info.samplerate; }
 
 private:
-	std::unique_ptr<double[]> samples_;
-	std::string file_name_;
-	sf_private_tag* file_ = nullptr;
-	SF_INFO info_;
+	SF_INFO m_info{};
+    std::vector<std::vector<float>> m_channels;
 };

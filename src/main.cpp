@@ -8,8 +8,8 @@
 
 int main(int argc, char* argv[])
 {
-    fftw_init_threads();
-    fftw_plan_with_nthreads(omp_get_max_threads() / 2);
+    fftwf_init_threads();
+    fftwf_plan_with_nthreads(omp_get_max_threads() / 2);
 
     // GUI
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());

@@ -56,7 +56,7 @@ include_directories("${FFTW3_ROOT}")
 include_directories("${SNDFILE_ROOT}/include")
 
 # Link to FFTW library files
-set(FFTW3_LIB "${FFTW3_ROOT}/libfftw3-3.lib")
+set(FFTW3_LIB "${FFTW3_ROOT}/libfftw3f-3.lib")
 set(SndFile_LIBRARIES "${SNDFILE_ROOT}/lib/sndfile.lib")
 #---------------------------------------------------------------------
 
@@ -94,17 +94,4 @@ target_include_directories(audio_fft_project PRIVATE
 vtk_module_autoinit(
     TARGETS audio_fft_project
     MODULES ${VTK_LIBRARIES}
-)
-
-#------------------------- POST BUILD -------------------------------
-add_custom_command(TARGET audio_fft_project POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${FFTW3_ROOT}/libfftw3-3.dll"
-    $<TARGET_FILE_DIR:audio_fft_project>
-)
-
-add_custom_command(TARGET audio_fft_project POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${SNDFILE_ROOT}/bin/sndfile.dll"
-    $<TARGET_FILE_DIR:audio_fft_project>
 )

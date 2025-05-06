@@ -1,4 +1,5 @@
 #include <cmath>
+#include "fftw3.h"
 
 #include "FFT.hpp"
 #include "ScopedStopwatch.hpp"
@@ -23,36 +24,33 @@ std::pair<std::vector<T>, std::vector<T>> averageBins(const std::vector<T>& x, c
 	return {x_avg, y_avg};
 }
 
-ResultFFT FFT::getBins(std::string_view file_name)
+ResultFFT FFT::getBins(AudioFile* audio)
 {
 	ScopedStopwatch t("getBins");
-	ScopedStopwatch taudio("load audio");
-	AudioFile audio(file_name);
-	taudio.stop();
 
-	const int channels  = audio.getChannelCount();
-	const size_t frames = audio.getFrameCount();
+	const int channels  = audio->channels();
+	const size_t frames = audio->frames();
 	const size_t bins   = frames / 2;
 	const double invFrames  = 1.0 / static_cast<double>(frames);
-	const double freqFactor = static_cast<double>(audio.getSampleRate()) * invFrames;
+	const double freqFactor = static_cast<double>(audio->rate()) * invFrames;
 
-	std::vector<fftw_complex*> fft_out(channels);
-	std::vector<fftw_plan> plans(channels);
+	std::vector<fftwf_complex*> fft_out(channels);
+	std::vector<fftwf_plan> plans(channels);
 
 	// Split audio data into channels if necessary, and prepare fftw.
 	{
 		ScopedStopwatch t2("fftw_init");
 		for (int ch = 0; ch < channels; ch++) {
-			double *fft_in = audio.getChannelData(ch);
-			fft_out[ch] = fftw_alloc_complex(bins + 1);
-			plans[ch] = fftw_plan_dft_r2c_1d(frames, fft_in, fft_out[ch], FFTW_ESTIMATE);
+			float *fft_in = audio->channel(ch).data();
+			fft_out[ch] = fftwf_alloc_complex(bins + 1);
+			plans[ch] = fftwf_plan_dft_r2c_1d(frames, fft_in, fft_out[ch], FFTW_ESTIMATE);
 		}
 	}
 	{
 		ScopedStopwatch t2("fftw_execute");
-#pragma omp parallel for schedule(static)
+		#pragma omp parallel for schedule(static)
 		for (int ch = 0; ch < channels; ch++)
-			fftw_execute(plans[ch]);
+			fftwf_execute(plans[ch]);
 	}
 	// Calculate the magnitude for each frequency bin.
 	ResultFFT result;
@@ -70,8 +68,8 @@ ResultFFT FFT::getBins(std::string_view file_name)
 	// Clean
 	{
 		ScopedStopwatch cl("cleanup");
-		for (auto& p : plans) fftw_destroy_plan(p);
-		for (auto& o : fft_out) fftw_free(o);
+		for (auto& p : plans) fftwf_destroy_plan(p);
+		for (auto& o : fft_out) fftwf_free(o);
 	}
 	// Limit data to draw
 	constexpr int bin_size = 100;
