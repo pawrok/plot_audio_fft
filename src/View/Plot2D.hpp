@@ -6,6 +6,9 @@
 #include <vtkFloatArray.h>
 #include <vtkNew.h>
 #include "FFT.hpp"
+#include "CustomChartXY.hpp""
+#include <vtkContextMouseEvent.h>
+#include <vtkSmartPointer.h>
 
 class LinePlot {
 public:
@@ -22,6 +25,6 @@ private:
 	vtkNew<vtkFloatArray> m_array_x2;
 	vtkNew<vtkFloatArray> m_array_y1;
 	vtkNew<vtkFloatArray> m_array_y2;
-	vtkNew<vtkChartXY> m_chart;
+	vtkNew<CustomChartXY> m_chart;
 	vtkNew<vtkContextView> m_view;
 };

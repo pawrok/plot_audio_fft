@@ -42,17 +42,11 @@ private:
 	QDoubleSpinBox*  m_spinLen{nullptr};
 	QLabel*          m_lblFile{nullptr};
 	QProgressBar*    m_progress{nullptr};
-	RangeSlider*     m_range {};
 	QLabel*          m_lblDuration {};
 	QStackedLayout*  m_stackLay {};
 
 	// other
 	double           m_totalSec      {0.0};
-	double           m_segStartSec   {0.0};
-	double           m_segLenSec     {20.0};
 
 	std::unique_ptr<AudioFile> m_audioFile;
-
-private slots:
-	void rangeChanged(int lo, int hi);
 };

@@ -54,7 +54,6 @@ void MainWindow::createControlDock()
     m_lblFile     = new QLabel(tr("<i>No file loaded</i>"));
     m_lblFile->setWordWrap(true);
     m_lblDuration = new QLabel(tr("Total: 0.000 s"));
-    m_range       = new RangeSlider;
 
     auto* row1 = new QHBoxLayout;
     row1->addWidget(loader);
@@ -63,7 +62,6 @@ void MainWindow::createControlDock()
 
     auto* lay = new QVBoxLayout;
     lay->addLayout(row1);
-    lay->addWidget(m_range);
 
     auto* w = new QWidget;
     w->setLayout(lay);
@@ -77,12 +75,10 @@ void MainWindow::createControlDock()
 void MainWindow::wireConnections()
 {
     connect(m_btnLoad, &QPushButton::clicked, this, &MainWindow::loadAudioFile);
-    connect(m_range,   &RangeSlider::valuesChanged, this, &MainWindow::rangeChanged);
 }
 
 void MainWindow::enableControls(bool enabled)
 {
-    m_range->setEnabled(enabled);
 }
 
 void MainWindow::loadAudioFile()
@@ -123,10 +119,3 @@ void MainWindow::computeAndRenderFFT()
     }
 }
 
-void MainWindow::rangeChanged(int lo, int hi)
-{
-    if (m_totalSec <= 0.0) return;
-    m_segStartSec = (lo / 1000.0) * m_totalSec;
-    m_segLenSec   = ((hi - lo) / 1000.0) * m_totalSec;
-    // computeAndRenderFFT();
-}

@@ -4,6 +4,7 @@
 
 #include <vtkRenderer.h>
 #include <vtkPlot.h>
+#include <vtkRenderWindowInteractor.h>
 
 LinePlot::LinePlot(vtkGenericOpenGLRenderWindow* window)
 {
@@ -28,7 +29,7 @@ LinePlot::LinePlot(vtkGenericOpenGLRenderWindow* window)
 	m_view->GetRenderer()->SetBackground(42 / 255.0, 42 / 255.0, 42 / 255.0);
 }
 
-void LinePlot::setSamples(const ResultFFT& samples) 
+void LinePlot::setSamples(const ResultFFT& samples)
 {
 	if (samples[0].size() != samples[2].size() || samples[1].size() != samples[3].size())
 		return;
@@ -61,14 +62,13 @@ void LinePlot::setSamples(const ResultFFT& samples)
 		plt->SetColor(255, 0, 0, 255);
 		plt->SetWidth(2.0);
 	}
-	
-	// Render
+
 	setColumns();
 	m_view->GetRenderWindow()->Render();
 }
 
 // todo ?
-void LinePlot::setColumns() 
+void LinePlot::setColumns()
 {
 	m_chart->GetAxis(0)->SetNumberOfTicks(5);
 	m_chart->GetAxis(1)->SetNumberOfTicks(5);
@@ -76,7 +76,7 @@ void LinePlot::setColumns()
 	m_chart->GetAxis(1)->SetUnscaledMaximumLimit(20000);
 }
 
-void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2) 
+void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2)
 {
 	m_array_x1->SetName(x1.data());
 	m_array_x2->SetName(x2.data());
@@ -84,7 +84,7 @@ void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::strin
 	m_array_y2->SetName(y2.data());
 }
 
-void LinePlot::setTitles(std::string t1, std::string t2) 
+void LinePlot::setTitles(std::string t1, std::string t2)
 {
 	m_chart->GetAxis(1)->SetTitle(t1);
 	m_chart->GetAxis(0)->SetTitle(t2);
