@@ -1,12 +1,12 @@
 #include <print>
 #include <vtkAxis.h>
-#include "Plot2D.hpp"
+#include "FFTLinePlot.hpp"
 
 #include <vtkRenderer.h>
 #include <vtkPlot.h>
-#include <vtkRenderWindowInteractor.h>
+#include <vtkTextProperty.h>
 
-LinePlot::LinePlot(vtkGenericOpenGLRenderWindow* window)
+FFTLinePlot::FFTLinePlot(vtkGenericOpenGLRenderWindow* window)
 {
 	m_table->AddColumn(m_array_x1);
 	m_table->AddColumn(m_array_x2);
@@ -29,7 +29,7 @@ LinePlot::LinePlot(vtkGenericOpenGLRenderWindow* window)
 	m_view->GetRenderer()->SetBackground(42 / 255.0, 42 / 255.0, 42 / 255.0);
 }
 
-void LinePlot::setSamples(const ResultFFT& samples)
+void FFTLinePlot::setSamples(const ResultFFT& samples)
 {
 	if (samples[0].size() != samples[2].size() || samples[1].size() != samples[3].size())
 		return;
@@ -63,12 +63,25 @@ void LinePlot::setSamples(const ResultFFT& samples)
 		plt->SetWidth(2.0);
 	}
 
+	m_chart->GetAxis(0)->GetPen()->SetColor(255, 255, 255, 255);
+	m_chart->GetAxis(1)->GetPen()->SetColor(255, 255, 255, 255);
+
+	auto p = m_chart->GetAxis(0)->GetLabelProperties();
+	p->SetColor(1, 1, 1);
+	p = m_chart->GetAxis(1)->GetLabelProperties();
+	p->SetColor(1, 1, 1);
+
+	p = m_chart->GetAxis(1)->GetTitleProperties();
+	p->SetColor(1, 1, 1);
+	p = m_chart->GetAxis(0)->GetTitleProperties();
+	p->SetColor(1, 1, 1);
+
 	setColumns();
 	m_view->GetRenderWindow()->Render();
 }
 
 // todo ?
-void LinePlot::setColumns()
+void FFTLinePlot::setColumns()
 {
 	m_chart->GetAxis(0)->SetNumberOfTicks(5);
 	m_chart->GetAxis(1)->SetNumberOfTicks(5);
@@ -76,7 +89,7 @@ void LinePlot::setColumns()
 	m_chart->GetAxis(1)->SetUnscaledMaximumLimit(20000);
 }
 
-void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2)
+void FFTLinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::string_view y1, std::string_view y2)
 {
 	m_array_x1->SetName(x1.data());
 	m_array_x2->SetName(x2.data());
@@ -84,14 +97,20 @@ void LinePlot::setAxesNames(std::string_view x1, std::string_view x2, std::strin
 	m_array_y2->SetName(y2.data());
 }
 
-void LinePlot::setTitles(std::string t1, std::string t2)
+void FFTLinePlot::setTitles(std::string t1, std::string t2)
 {
 	m_chart->GetAxis(1)->SetTitle(t1);
 	m_chart->GetAxis(0)->SetTitle(t2);
 }
 
-void LinePlot::resetCamera()
+void FFTLinePlot::resetCamera()
 {
 	m_chart->RecalculateBounds();
 	std::print("reset used\n");
+}
+
+void FFTLinePlot::clearPlot()
+{
+	m_table->RemoveAllRows();
+	m_chart->ClearPlots();
 }

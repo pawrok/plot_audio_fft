@@ -1,5 +1,5 @@
 #pragma once
-#include "Plot2D.hpp"
+#include "FFTLinePlot.hpp"
 #include "RangeSlider.hpp"
 #include <QMainWindow>
 #include <memory>
@@ -22,7 +22,7 @@ public:
 	~MainWindow() override = default;
 
 private slots:
-	void loadAudioFile();
+	void userOpenAudioFile();
 	void computeAndRenderFFT();
 
 private:
@@ -30,11 +30,13 @@ private:
 	void createControlDock();
 	void wireConnections();
 	void enableControls(bool enabled);
+	void loadAudioFile(const QString& fn);
+	void updateAudioLabels();
 
 	// Plot
 	QVTKOpenGLNativeWidget* m_vtkWidget{nullptr};
 	vtkNew<vtkGenericOpenGLRenderWindow> m_renderWindow;
-	std::unique_ptr<LinePlot> m_plot;
+	std::unique_ptr<FFTLinePlot> m_plot;
 
 	// UI
 	QPushButton*     m_btnLoad{nullptr};
@@ -49,4 +51,5 @@ private:
 	double           m_totalSec      {0.0};
 
 	std::unique_ptr<AudioFile> m_audioFile;
+	QString m_audioFilePath;
 };

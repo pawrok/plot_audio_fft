@@ -74,6 +74,8 @@ file(GLOB_RECURSE PROJECT_HEADERS "src/*.hpp")
 add_executable(audio_fft_project
     ${PROJECT_SOURCES}
     ${PROJECT_HEADERS}
+        src/View/customChartXY.cpp
+        src/View/customChartXY.hpp
 )
 
 target_link_libraries(audio_fft_project ${VTK_LIBRARIES})

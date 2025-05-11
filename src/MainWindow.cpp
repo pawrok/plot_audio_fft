@@ -1,6 +1,10 @@
 #include "MainWindow.hpp"
+
+#include <QApplication>
+
 #include "FFT.hpp"
 
+#include <QtConcurrent>
 #include <qcoreapplication.h>
 #include <QVTKOpenGLNativeWidget.h>
 #include <QDockWidget>
@@ -12,6 +16,7 @@
 #include <QProgressBar>
 #include <QTimer>
 #include <sndfile.h>
+#include <thread>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -20,6 +25,9 @@ MainWindow::MainWindow(QWidget* parent)
     createControlDock();
     wireConnections();
     resize(1200, 800);
+
+    // for development:
+    loadAudioFile("D:\\Nextcloud\\Music\\69_Desire.mp3");
 }
 
 void MainWindow::createCentralVTKWidget()
@@ -27,7 +35,7 @@ void MainWindow::createCentralVTKWidget()
     m_vtkWidget = new QVTKOpenGLNativeWidget();
     setCentralWidget(m_vtkWidget);
     m_vtkWidget->setRenderWindow(m_renderWindow.Get());
-    m_plot = std::make_unique<LinePlot>(m_renderWindow.Get());
+    m_plot = std::make_unique<FFTLinePlot>(m_renderWindow.Get());
     m_plot->setAxesNames("x1", "x2", "ch1", "ch2");
     m_plot->setColumns();
     m_plot->setTitles("Frequency (Hz)", "Magnitude");
@@ -74,48 +82,73 @@ void MainWindow::createControlDock()
 
 void MainWindow::wireConnections()
 {
-    connect(m_btnLoad, &QPushButton::clicked, this, &MainWindow::loadAudioFile);
+    connect(m_btnLoad, &QPushButton::clicked, this, &MainWindow::userOpenAudioFile);
 }
 
 void MainWindow::enableControls(bool enabled)
 {
+    m_btnLoad->setEnabled(enabled);
 }
 
-void MainWindow::loadAudioFile()
+void MainWindow::loadAudioFile(const QString &fn)
 {
-    const QString fn = QFileDialog::getOpenFileName(this, tr("Open audio"), {}, tr("Audio files (*.wav *.flac *.ogg *.mp3)"));
-    if (fn.isEmpty()) return;
+    m_audioFilePath = fn;
+    QFuture<void> future = QtConcurrent::run([this, fn]() {
+        m_audioFile.reset(new AudioFile(fn.toStdString()));
+        // Update UI in signal
+        QMetaObject::invokeMethod(this, [this, fn]() {
+            enableControls(true);
+        }, Qt::QueuedConnection);
+        computeAndRenderFFT();
+    });
+}
 
-    m_stackLay->setCurrentIndex(1);
-    qApp->processEvents();
-
-    m_audioFile.reset(new AudioFile(fn.toStdString()));
-
+void MainWindow::updateAudioLabels()
+{
     SF_INFO info {};
-    if (SNDFILE* f = sf_open(fn.toStdString().c_str(), SFM_READ, &info)) {
+    if (SNDFILE* f = sf_open(m_audioFilePath.toStdString().c_str(), SFM_READ, &info)) {
         m_totalSec = static_cast<double>(info.frames) / info.samplerate;
         sf_close(f);
-    } else m_totalSec = 0.0;
+    } else
+        m_totalSec = 0.0;
+    m_lblDuration->setText(tr("File duration: %1 s").arg(QString::number(m_totalSec, 'f', 0)));
+    auto audio_name = QFileInfo(m_audioFilePath).fileName();
+    m_lblFile->setText(tr("File loaded: %1").arg(audio_name));
+}
 
-    m_lblDuration->setText(
-        tr("Total: %1 s").arg(QString::number(m_totalSec, 'f', 3)));
-    m_lblFile->setText(tr("File loaded: %1").arg(fn));
+void MainWindow::userOpenAudioFile()
+{
+    const QString fn = QFileDialog::getOpenFileName(this, tr("Open audio"), {}, tr("Audio files (*.wav *.flac *.ogg *.mp3)"));
+    if (fn.isEmpty()) {
+        return;
+    }
 
-    computeAndRenderFFT();
+    enableControls(false);
+    m_stackLay->setCurrentIndex(1);
+    m_lblFile->setText("Loading Audio File...");
+    m_plot->clearPlot();
+    qApp->processEvents();
 
-    m_lblDuration->setText(tr("Track duration: %1 s").arg(QString::number(m_totalSec, 'f', 3)));
-    m_lblFile->setText(tr("File loaded: %1").arg(fn));
-
-    m_stackLay->setCurrentIndex(0);
+    loadAudioFile(fn);
 }
 
 void MainWindow::computeAndRenderFFT()
 {
-    const auto result = FFT::getBins(m_audioFile.get());
-    if (!result[0].empty() && !result[2].empty()) {
-        m_plot->setSamples(result);
-        m_renderWindow->Render();
-        enableControls(true);
-    }
-}
+    QApplication::setOverrideCursor(Qt::BusyCursor);
+    m_lblFile->setText("Computing FFT...");
+    qApp->processEvents();
 
+    QFuture<void> future = QtConcurrent::run([this]() {
+        const auto result = FFT::getBins(m_audioFile.get());
+        QMetaObject::invokeMethod(this, [this, result]() {
+            if (!result[0].empty() && !result[2].empty()) {
+                m_plot->setSamples(result);
+                m_renderWindow->Render();
+            }
+            enableControls(true);
+            m_stackLay->setCurrentIndex(0);
+            updateAudioLabels();
+            QApplication::restoreOverrideCursor();
+        }, Qt::QueuedConnection);
+    });
+}
