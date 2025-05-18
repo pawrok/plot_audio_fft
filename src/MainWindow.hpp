@@ -1,12 +1,11 @@
 #pragma once
 #include "FFTLinePlot.hpp"
-#include "RangeSlider.hpp"
+#include "AudioFile.hpp"
+
 #include <QMainWindow>
 #include <memory>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <QStackedLayout>
-
-#include "AudioFile.hpp"
 
 class QVTKOpenGLNativeWidget;
 class QLabel;

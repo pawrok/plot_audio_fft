@@ -64,8 +64,6 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/DAQ
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/DSP
     ${CMAKE_CURRENT_SOURCE_DIR}/src/View
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common
 )
@@ -74,8 +72,6 @@ file(GLOB_RECURSE PROJECT_HEADERS "src/*.hpp")
 add_executable(audio_fft_project
     ${PROJECT_SOURCES}
     ${PROJECT_HEADERS}
-        src/View/customChartXY.cpp
-        src/View/customChartXY.hpp
 )
 
 target_link_libraries(audio_fft_project ${VTK_LIBRARIES})

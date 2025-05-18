@@ -1,22 +1,20 @@
 #include "MainWindow.hpp"
+#include "FFT.hpp"
+#include "settings.hpp"
 
 #include <QApplication>
-
-#include "FFT.hpp"
-
 #include <QtConcurrent>
 #include <qcoreapplication.h>
 #include <QVTKOpenGLNativeWidget.h>
 #include <QDockWidget>
 #include <QHBoxLayout>
 #include <QPushButton>
-#include <QDoubleSpinBox>
 #include <QLabel>
 #include <QFileDialog>
 #include <QProgressBar>
-#include <QTimer>
 #include <sndfile.h>
-#include <thread>
+
+GlobalSettings SETTINGS;
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -27,7 +25,7 @@ MainWindow::MainWindow(QWidget* parent)
     resize(1200, 800);
 
     // for development:
-    loadAudioFile("D:\\Nextcloud\\Music\\69_Desire.mp3");
+    loadAudioFile(R"(D:\Nextcloud\Music\69_Desire.mp3)");
 }
 
 void MainWindow::createCentralVTKWidget()
@@ -93,12 +91,10 @@ void MainWindow::enableControls(bool enabled)
 void MainWindow::loadAudioFile(const QString &fn)
 {
     m_audioFilePath = fn;
+    QApplication::setOverrideCursor(Qt::BusyCursor);
+
     QFuture<void> future = QtConcurrent::run([this, fn]() {
         m_audioFile.reset(new AudioFile(fn.toStdString()));
-        // Update UI in signal
-        QMetaObject::invokeMethod(this, [this, fn]() {
-            enableControls(true);
-        }, Qt::QueuedConnection);
         computeAndRenderFFT();
     });
 }
@@ -134,17 +130,19 @@ void MainWindow::userOpenAudioFile()
 
 void MainWindow::computeAndRenderFFT()
 {
-    QApplication::setOverrideCursor(Qt::BusyCursor);
-    m_lblFile->setText("Computing FFT...");
-    qApp->processEvents();
+    QMetaObject::invokeMethod(this, [this]() {
+        m_lblFile->setText("Computing FFT...");
+        qApp->processEvents();
+    }, Qt::QueuedConnection);
 
     QFuture<void> future = QtConcurrent::run([this]() {
+        // Calculate FFT
         const auto result = FFT::getBins(m_audioFile.get());
+        // Update UI
         QMetaObject::invokeMethod(this, [this, result]() {
-            if (!result[0].empty() && !result[2].empty()) {
-                m_plot->setSamples(result);
-                m_renderWindow->Render();
-            }
+            m_plot->setSamples(result);
+            m_renderWindow->Render();
+
             enableControls(true);
             m_stackLay->setCurrentIndex(0);
             updateAudioLabels();

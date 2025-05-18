@@ -4,7 +4,6 @@
 #include <vtkTransform2D.h>
 #include <vtkContextTransform.h>
 
-#include <print>
 #include <vtkPlot.h>
 
 bool CustomChartXY::MouseButtonPressEvent(const vtkContextMouseEvent& mouse)
@@ -86,5 +85,5 @@ void CustomChartXY::ZoomToRect(const vtkRectf& rect)
     xAxis->SetRange(x0, x1);
     yAxis->SetRange(y0, y1);
 
-    Modified();
+    // Modified();
 }

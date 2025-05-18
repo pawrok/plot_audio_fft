@@ -19,7 +19,7 @@ FFTLinePlot::FFTLinePlot(vtkGenericOpenGLRenderWindow* window)
 	m_array_y1->SetName("y1");
 	m_array_y2->SetName("y2");
 
-    // Add a plot to the view. Probably change it in the future.
+	// Add this plot to the window
 	m_view->SetRenderWindow(window);
 	m_view->GetScene()->AddItem(m_chart);
 	m_view->GetRenderWindow()->SetWindowName("LinePlot");
@@ -29,22 +29,18 @@ FFTLinePlot::FFTLinePlot(vtkGenericOpenGLRenderWindow* window)
 	m_view->GetRenderer()->SetBackground(42 / 255.0, 42 / 255.0, 42 / 255.0);
 }
 
-void FFTLinePlot::setSamples(const ResultFFT& samples)
+void FFTLinePlot::setSamples(const std::shared_ptr<FFTResult>& samples)
 {
-	if (samples[0].size() != samples[2].size() || samples[1].size() != samples[3].size())
-		return;
-
 	m_table->RemoveAllRows();
 
 	// Fill in the table with some example values.
-	auto num_points = std::max(samples[0].size(), samples[1].size());
-	m_table->SetNumberOfRows(num_points);
+	m_table->SetNumberOfRows(samples->size);
 
-	for (int i = 0; i < samples[0].size(); ++i) {
-		m_table->SetValue(i, 0, samples[0][i]);
-		m_table->SetValue(i, 1, samples[1][i]);
-		m_table->SetValue(i, 2, samples[2][i]);
-		m_table->SetValue(i, 3, samples[3][i]);
+	for (int i = 0; i < samples->size; ++i) {
+		m_table->SetValue(i, 0, samples->frequency[0][i]);
+		m_table->SetValue(i, 1, samples->frequency[1][i]);
+		m_table->SetValue(i, 2, samples->magnitude[0][i]);
+		m_table->SetValue(i, 3, samples->magnitude[1][i]);
 	}
 
 	m_chart->ClearPlots();
