@@ -7,25 +7,33 @@
 class ScopedStopwatch {
 public:
     ScopedStopwatch() = delete;
+    ScopedStopwatch(const ScopedStopwatch&)            = delete;
+    ScopedStopwatch& operator=(const ScopedStopwatch&) = delete;
+    ScopedStopwatch(ScopedStopwatch&&)                 = delete;
+    ScopedStopwatch& operator=(ScopedStopwatch&&)      = delete;
+
     explicit ScopedStopwatch(std::string_view name)
-        : name_(name),
-          start_tp_(std::chrono::high_resolution_clock::now()) {}
+        : m_name(name), m_start(clock_t::now()) {}
+
     ~ScopedStopwatch() { stop(); }
     void stop() {
-        if (stopped_) return;
-        using namespace std::chrono;
-        const auto end_tp = high_resolution_clock::now();
-        const auto start = duration_cast<microseconds>(start_tp_.time_since_epoch()).count();
-        const auto end = duration_cast<microseconds>(end_tp.time_since_epoch()).count();
-        const auto diff_us = end - start;
+        if (m_stopped) return;
+        const auto diff_us = std::chrono::duration_cast<microseconds>(clock_t::now() - m_start).count();
 
-        std::lock_guard lock(output_mutex_);
-        std::print("Stopwatch {} finished with duration {}.{}(ms).\n", name_, diff_us / 1000, diff_us % 1000);
-        stopped_ = true;
+        std::lock_guard lock(m_mutex);
+#if defined(__cpp_lib_print)
+        std::print("Stopwatch {}: {:.3f} ms\n", m_name, diff_us / 1000.0);
+#else
+        std::printf("Stopwatch %s: %.3f ms\n", m_name.c_str(), diff.count() / 1000.0);
+#endif
+        m_stopped = true;
     }
 private:
-    const std::string name_;
-    std::chrono::time_point<std::chrono::high_resolution_clock> start_tp_;
-    inline static std::mutex output_mutex_;
-    bool stopped_ = false;
+    using clock_t   = std::chrono::steady_clock;
+    using timepoint = std::chrono::time_point<clock_t>;
+
+    const std::string m_name;
+    timepoint m_start;
+    inline static std::mutex m_mutex;
+    bool m_stopped = false;
 };
