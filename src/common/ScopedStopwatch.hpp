@@ -18,22 +18,24 @@ public:
     ~ScopedStopwatch() { stop(); }
     void stop() {
         if (m_stopped) return;
-        const auto diff_us = std::chrono::duration_cast<microseconds>(clock_t::now() - m_start).count();
+        const auto diff = std::chrono::duration_cast<microseconds>(clock_t::now() - m_start);
 
         std::lock_guard lock(m_mutex);
 #if defined(__cpp_lib_print)
-        std::print("Stopwatch {}: {:.3f} ms\n", m_name, diff_us / 1000.0);
+        std::print("Stopwatch {}: {:.3f} ms\n", m_name, diff.count() / 1000.0);
 #else
         std::printf("Stopwatch %s: %.3f ms\n", m_name.c_str(), diff.count() / 1000.0);
 #endif
         m_stopped = true;
     }
+
 private:
     using clock_t   = std::chrono::steady_clock;
     using timepoint = std::chrono::time_point<clock_t>;
 
     const std::string m_name;
     timepoint m_start;
-    inline static std::mutex m_mutex;
     bool m_stopped = false;
+    
+    inline static std::mutex m_mutex;
 };
