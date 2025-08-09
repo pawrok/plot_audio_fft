@@ -18,7 +18,7 @@ public:
     ~ScopedStopwatch() { stop(); }
     void stop() {
         if (m_stopped) return;
-        const auto diff = std::chrono::duration_cast<microseconds>(clock_t::now() - m_start);
+        const auto diff = std::chrono::duration_cast<std::chrono::microseconds>(clock_t::now() - m_start);
 
         std::lock_guard lock(m_mutex);
 #if defined(__cpp_lib_print)

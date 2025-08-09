@@ -96,3 +96,68 @@ std::shared_ptr<FFTResult> FFT::getBins(AudioFile* audio)
 			result_avg->frequency[1], result_avg->magnitude[1]);
 	return result_avg;
 }
+
+// overlap from 0 to 1
+// todo: improve err handling for overlap >= 1.0
+std::shared_ptr<STFTResult> FFT::getShortTimeFFT(AudioFile* audio, double window_sec = 0.1, double overlap = 0.0)
+{
+	ScopedStopwatch t("getShortTimeFFT");
+
+	const int channels      = audio->channels();
+	const sf_count_t frames = audio->frames();
+	const int rate          = audio->rate();
+
+	const int window_samples = static_cast<int>(std::lround(window_sec * rate));
+	const int step_samples   = std::max(1, static_cast<int>(window_samples * (1.0 - overlap)));
+	const int windows        = (frames - window_samples) / step_samples + 1;
+	const int bins           = window_samples / 2; // skip last bin
+
+	auto result = std::make_shared<STFTResult>(channels, windows, bins);
+
+	// fill frequencies. skip DC and N/2.
+	for (int i = 1; i < bins; ++i)
+		result->frequency[i - 1] = i * static_cast<float>(rate) / window_samples;
+
+	std::vector<std::vector<float>> fft_in(channels, std::vector<float>(window_samples));
+	std::vector<fftwf_complex*> fft_out(channels);
+	std::vector<fftwf_plan> plans(channels);
+
+	// fftw alloc & plan
+	for (int ch = 0; ch < channels; ++ch) {
+		fft_out[ch] = fftwf_alloc_complex(bins + 1);
+		plans[ch]   = fftwf_plan_dft_r2c_1d(window_samples, fft_in[ch].data(), fft_out[ch], FFTW_ESTIMATE);
+	}
+
+	// calculate fft for each window
+	for (int w = 0; w < windows; ++w) {
+		const sf_count_t offset = w * step_samples;
+		const float time_pos    = static_cast<float>(offset + window_samples * 0.5) / rate;
+
+		for (int ch = 0; ch < channels; ++ch) {
+			std::memcpy(fft_in[ch].data(), audio->channel(ch).data() + offset, window_samples * sizeof(float));
+			if (SETTINGS.apply_hann_window)
+				apply_hann_window(std::span<float>(fft_in[ch].data(), window_samples));
+		}
+
+		for (int ch = 0; ch < channels; ++ch)
+			fftwf_execute(plans[ch]);
+
+		result->time[w] = time_pos;
+
+		const double inv_win = SETTINGS.apply_hann_window ? 2.0 / window_samples : 1.0 / window_samples;
+		for (int ch = 0; ch < channels; ++ch) {
+			for (int b = 1; b < bins; ++b) {	// skip DC and N/2.
+				const float re  = fft_out[ch][b][0];
+				const float im  = fft_out[ch][b][1];
+				const float mag = std::hypot(re, im) * inv_win;
+				// result->magnitude[ch * w * (bins - 1) + (b - 1)] = 20.0f * std::log10(mag + 1e-20f);
+				result->magnitude[result->magIndex(ch,w,b)] = 20.0f * std::log10(mag + 1e-20f);
+			}
+		}
+	}
+
+	for (auto& p : plans) fftwf_destroy_plan(p);
+	for (auto& o : fft_out) fftwf_free(o);
+
+	return result;
+}

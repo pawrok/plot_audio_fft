@@ -8,8 +8,17 @@
 #include "MainWindow.hpp"
 #include <vtkVersion.h>
 
+#include "ScopedStopwatch.hpp"
+
 int main(int argc, char* argv[])
 {
+    {
+        ScopedStopwatch s2("main2");
+        {
+            ScopedStopwatch s1("main1");
+            std::print("sth\n");
+        }
+    }
     std::print("VTK version: {}\n", vtkVersion::GetVTKVersion());
 
     fftwf_init_threads();
